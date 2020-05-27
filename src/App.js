@@ -1,6 +1,8 @@
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import './App.css'
-/*import Bezier from 'bezier-js'*/
+import BezierCurve from 'bezier-js'
+import {CubicBezierCurve, Vector2} from 'three'
+
 import {Graphics} from 'pixi.js'
 import {PixiComponent, Stage} from '@inlet/react-pixi'
 
@@ -11,6 +13,28 @@ const App = () => {
   const [toPosition, setToPosition] = useState({x:500, y:500})
   const [cpPosition, setCpPosition] = useState({x:100, y:200})
   const [cp2Position, setCp2Position] = useState({x:200, y:300})
+
+  const [steps, setSteps] = useState([])
+
+  useEffect(() => {
+    /*const curve = new BezierCurve(fromPosition.x, fromPosition.y, cpPosition.x, cpPosition.y, cp2Position.x, cp2Position.y, toPosition.x, toPosition.y )
+    const arclength = curve.length()
+    const label = ((100*arclength)|0)/100 + "px"*/
+    /*console.log(arclength, label)*/
+
+    let curve = new CubicBezierCurve(
+      new Vector2( fromPosition.x, fromPosition.y ),
+      new Vector2( cpPosition.x, cpPosition.y ),
+      new Vector2( cp2Position.x, cp2Position.y ),
+      new Vector2( toPosition.x, toPosition.y )
+    )
+
+    const spacePoints = curve.getSpacedPoints ( 10 )
+
+    console.log('spacedPoints', spacePoints)
+
+    setSteps(spacePoints)
+  }, [fromPosition, cpPosition, cp2Position, toPosition, setSteps])
 
   const getMousePos = (canvas, evt) => {
     const rect = canvas.getBoundingClientRect()
@@ -44,6 +68,7 @@ const App = () => {
     create: props => new Graphics(),
     applyProps: (instance, _, props) => {
       const { fromX, fromY, cpX, cpY, cpX2, cpY2, toX, toY } = props;
+
       instance.clear();
       instance.lineStyle(2, 0x00ffae, 1)
       instance.bezierCurveTo(cpX, cpY, cpX2, cpY2, toX, toY)
@@ -76,6 +101,17 @@ const App = () => {
 
   return (
     <Stage width={1000} height={700} onMouseMove={handleOnMouseMove}>
+      {steps.map(({x,y}, index) => (
+        <ControlRectangle
+          key={index}
+          x={x - 5}
+          y={y - 5}
+          width={10}
+          height={10}
+          fill={0xfffbb7}
+          name={'step'}
+        />
+      ))}
       <Bezier
         fromX={fromPosition.x}
         fromY={fromPosition.y}
