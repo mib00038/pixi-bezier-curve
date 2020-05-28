@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react'
 import './App.css'
 import BezierCurve from 'bezier-js'
+import {jsBezier} from 'jsbezier'
 import {CubicBezierCurve, Vector2} from 'three'
 
 import {Graphics} from 'pixi.js'
@@ -11,30 +12,45 @@ const App = () => {
   const [controlsState, setControlsState] = useState('')
   const [fromPosition, setFromPosition] = useState({x:50, y:50})
   const [toPosition, setToPosition] = useState({x:500, y:500})
-  const [cpPosition, setCpPosition] = useState({x:100, y:200})
-  const [cp2Position, setCp2Position] = useState({x:200, y:300})
-
+  const [cpPosition, setCpPosition] = useState({x:100, y:300})
+  const [cp2Position, setCp2Position] = useState({x:200, y:100})
   const [steps, setSteps] = useState([])
+  const [spacePoints2, setSpacePoints2] = useState([])
 
   useEffect(() => {
-    /*const curve = new BezierCurve(fromPosition.x, fromPosition.y, cpPosition.x, cpPosition.y, cp2Position.x, cp2Position.y, toPosition.x, toPosition.y )
-    const arclength = curve.length()
-    const label = ((100*arclength)|0)/100 + "px"*/
-    /*console.log(arclength, label)*/
-
     let curve = new CubicBezierCurve(
       new Vector2( fromPosition.x, fromPosition.y ),
       new Vector2( cpPosition.x, cpPosition.y ),
       new Vector2( cp2Position.x, cp2Position.y ),
       new Vector2( toPosition.x, toPosition.y )
     )
-
     const spacePoints = curve.getSpacedPoints ( 10 )
 
-    console.log('spacedPoints', spacePoints)
+    let bezierJSCurve = new BezierCurve(
+      fromPosition.x, fromPosition.y,
+      cpPosition.x, cpPosition.y,
+      cp2Position.x, cp2Position.y,
+      toPosition.x, toPosition.y
+    )
+
+    const jsBezierCurve =
+      [
+        {x:fromPosition.x, y:fromPosition.y},
+        {x:cpPosition.x, y:cpPosition.y},
+        {x:cp2Position.x, y:cp2Position.y},
+        {x:toPosition.x, y:toPosition.y}
+      ]
+
+    const nearestPointsOnCurve = spacePoints.map(p => {
+      const {point, location} = jsBezier.nearestPointOnCurve(p, jsBezierCurve)
+      const nv = bezierJSCurve.normal(location);
+      return {pt: point, nv, t: location}
+    })
 
     setSteps(spacePoints)
-  }, [fromPosition, cpPosition, cp2Position, toPosition, setSteps])
+    setSpacePoints2(nearestPointsOnCurve)
+
+  }, [fromPosition, cpPosition, cp2Position, toPosition, setSteps, setSpacePoints2])
 
   const getMousePos = (canvas, evt) => {
     const rect = canvas.getBoundingClientRect()
@@ -64,10 +80,24 @@ const App = () => {
     }
   }
 
+  const Line  = PixiComponent('Line', {
+    create: props => new Graphics(),
+    applyProps: (instance, _, props) => {
+      const {pt, t, nv} = props
+
+      instance.clear();
+      instance.lineStyle(1, 0x00ffae, 1)
+      instance.moveTo(pt.x,pt.y)
+      instance.lineTo(pt.x + 40*nv.x, pt.y + 40*nv.y)
+      instance.endFill()
+
+    }
+  })
+
   const Bezier = PixiComponent('Bezier', {
     create: props => new Graphics(),
     applyProps: (instance, _, props) => {
-      const { fromX, fromY, cpX, cpY, cpX2, cpY2, toX, toY } = props;
+      const { fromX, fromY, cpX, cpY, cpX2, cpY2, toX, toY } = props
 
       instance.clear();
       instance.lineStyle(2, 0x00ffae, 1)
@@ -122,6 +152,12 @@ const App = () => {
         toX={toPosition.x-fromPosition.x}
         toY={toPosition.y-fromPosition.y}
       />
+      {spacePoints2.map(({pt, t, nv}, index) => (
+        <Line
+          key={index}
+          {...{pt, t, nv}}
+        />
+      ))}
       <ControlRectangle
         x={fromPosition.x-5}
         y={fromPosition.y-5}
