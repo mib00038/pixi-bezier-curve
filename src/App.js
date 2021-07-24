@@ -5,17 +5,21 @@ import {jsBezier} from 'jsbezier'
 import {CubicBezierCurve, Vector2} from 'three'
 
 import {Graphics} from 'pixi.js'
-import {PixiComponent, Stage} from '@inlet/react-pixi'
+import {PixiComponent, Stage, useApp} from '@inlet/react-pixi'
+import Viewport from "./components/Viewport"
+import { useDebounce, useDebouncedCallback } from 'use-debounce'
+import ControlPoints, {ControlRectangle} from "components/ControlPoints";
 
 const App = () => {
-
   const [controlsState, setControlsState] = useState('')
-  const [fromPosition, setFromPosition] = useState({x:50, y:50})
-  const [toPosition, setToPosition] = useState({x:500, y:500})
-  const [cpPosition, setCpPosition] = useState({x:100, y:300})
-  const [cp2Position, setCp2Position] = useState({x:200, y:100})
+  const [fromPosition, setFromPosition] = useState({ x: 50, y: 50 })
+  const [toPosition, setToPosition] = useState({ x: 500, y: 500 })
+  const [cpPosition, setCpPosition] = useState({ x: 100, y: 300 })
+  const [cp2Position, setCp2Position] = useState({ x: 200, y: 100 })
   const [steps, setSteps] = useState([])
   const [spacePoints2, setSpacePoints2] = useState([])
+  const [hitArea, setHitArea] = useState({ x: 0, y:0 })
+  const [viewPort, setViewPort] = useState()
 
   useEffect(() => {
     let curve = new CubicBezierCurve(
@@ -52,6 +56,15 @@ const App = () => {
 
   }, [fromPosition, cpPosition, cp2Position, toPosition, setSteps, setSpacePoints2])
 
+
+  useEffect(() => {
+    console.log({ hitArea })
+  }, [hitArea])
+
+  useEffect(() => {
+    console.log({ viewPort })
+  }, [viewPort])
+
   const getMousePos = (canvas, evt) => {
     const rect = canvas.getBoundingClientRect()
     return {
@@ -62,18 +75,20 @@ const App = () => {
 
   const handleOnMouseMove = (e) => {
     const {x, y}  = getMousePos(e.target, e)
+    // console.log('handleOnMouseMove', { e, controlsState })
+
     switch (controlsState) {
       case 'fromControl' :
-        setFromPosition({x, y})
+        setFromPosition({ x: x + hitArea.x, y: y + hitArea.y })
         break
       case 'toControl' :
-        setToPosition({x, y})
+        setToPosition({ x: x + hitArea.x, y: y + hitArea.y })
         break
       case 'cpControl' :
-        setCpPosition({x,y})
+        setCpPosition({ x: x + hitArea.x, y: y + hitArea.y })
         break
       case 'cp2Control' :
-        setCp2Position({x, y})
+        setCp2Position({ x:  x + hitArea.x, y: y + hitArea.y })
         break
       default:
         break
@@ -90,7 +105,6 @@ const App = () => {
       instance.moveTo(pt.x,pt.y)
       instance.lineTo(pt.x + 40*nv.x, pt.y + 40*nv.y)
       instance.endFill()
-
     }
   })
 
@@ -107,89 +121,38 @@ const App = () => {
     }
   })
 
-  const ControlRectangle = PixiComponent('Rectangle', {
-    create: props => new Graphics(),
-    applyProps: (instance, _, props) => {
-      const { x, y, width, height, fill, name } = props
-      instance.clear()
-      instance.beginFill(fill)
-      instance.drawRect(x, y, width, height)
-      instance.endFill()
-      instance.interactive = true
-      instance.buttonMode = true
-      instance.name = name
-
-      instance.mousedown = () => {
-        setControlsState(instance.name)
-      }
-
-      instance.mouseup = () => {
-        setControlsState('')
-      }
-    }
-  })
-
   return (
     <Stage width={1000} height={700} onMouseMove={handleOnMouseMove}>
-      {steps.map(({x,y}, index) => (
-        <ControlRectangle
-          key={index}
-          x={x - 5}
-          y={y - 5}
-          width={10}
-          height={10}
-          fill={0xfffbb7}
-          name={'step'}
-        />
-      ))}
-      <Bezier
-        fromX={fromPosition.x}
-        fromY={fromPosition.y}
-        cpX={cpPosition.x-fromPosition.x}
-        cpY={cpPosition.y-fromPosition.y}
-        cpX2={cp2Position.x-fromPosition.x}
-        cpY2={cp2Position.y-fromPosition.y}
-        toX={toPosition.x-fromPosition.x}
-        toY={toPosition.y-fromPosition.y}
-      />
-      {spacePoints2.map(({pt, t, nv}, index) => (
-        <Line
-          key={index}
-          {...{pt, t, nv}}
-        />
-      ))}
-      <ControlRectangle
-        x={fromPosition.x-5}
-        y={fromPosition.y-5}
-        width={10}
-        height={10}
-        fill={0x2fff00}
-        name={'fromControl'}
-      />
-      <ControlRectangle
-        x={cpPosition.x-5}
-        y={cpPosition.y-5}
-        width={10}
-        height={10}
-        fill={0xa7ff95}
-        name={'cpControl'}
-      />
-      <ControlRectangle
-        x={cp2Position.x-5}
-        y={cp2Position.y-5}
-        width={10}
-        height={10}
-        fill={0xff00e4}
-        name={'cp2Control'}
-      />
-      <ControlRectangle
-        x={toPosition.x - 5}
-        y={toPosition.y - 5}
-        width={10}
-        height={10}
-        fill={0xff00e4}
-        name={'toControl'}
-      />
+      <Viewport width={1000} height={700} {...{ setHitArea, setViewPort, controlsState }}>
+          {steps.map(({x,y}, index) => (
+            <ControlRectangle
+              key={index}
+              x={x - 5}
+              y={y - 5}
+              width={10}
+              height={10}
+              fill={0xfffbb7}
+              name={'step'}
+            />
+          ))}
+          <Bezier
+            fromX={fromPosition.x}
+            fromY={fromPosition.y}
+            cpX={cpPosition.x - fromPosition.x}
+            cpY={cpPosition.y - fromPosition.y}
+            cpX2={cp2Position.x - fromPosition.x}
+            cpY2={cp2Position.y - fromPosition.y}
+            toX={toPosition.x - fromPosition.x}
+            toY={toPosition.y - fromPosition.y}
+          />
+          {spacePoints2.map(({pt, t, nv}, index) => (
+            <Line
+              key={index}
+              {...{pt, t, nv}}
+            />
+          ))}
+        <ControlPoints {...{ fromPosition, cpPosition, cp2Position, toPosition, viewPort, setControlsState }} />
+      </Viewport>
     </Stage>
   )
 }

@@ -9,11 +9,13 @@
     "@testing-library/user-event": "^7.2.1",
     "bezier-js": "^2.6.1",
     "jsbezier": "^0.9.5",
+    "pixi-viewport": "^4.32.0",
     "pixi.js": "^5.2.4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.1",
-    "three": "^0.117.0"
+    "three": "^0.117.0",
+    "use-debounce": "^7.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
