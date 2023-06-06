@@ -30,7 +30,9 @@ export const ControlRectangle = PixiComponent('Rectangle', {
     }
 
     instance.mouseup = () => {
-      props.setControlsState('')
+      if (name !== "step") {
+        props.setControlsState('')
+      }
     }
   }
 })
